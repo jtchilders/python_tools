@@ -1,5 +1,5 @@
 from ROOT import TCanvas,TPad,TLegend,TGaxis
-
+import ChiSquared
 
 class Plot:
    def __init__(self,plot,
@@ -21,8 +21,11 @@ class Plot:
          self.plot.Draw(self.draw_options + ' same')
       else:
          self.plot.Draw(self.draw_options)
-   def AddToLegend(self,legend):
-      legend.AddEntry(self.plot,self.legend_label,self.legend_draw_options)
+   def AddToLegend(self,legend,chi2=None):
+      legend_label = self.legend_label
+      if chi2 is not None:
+         legend_label += ' chi2 = %05.3f' % (chi2/self.plot.GetNbinsX())
+      legend.AddEntry(self.plot,legend_label,self.legend_draw_options)
    def CreateRatio(self,reference,ratio_order):
       # create new ratio histogram
       self.ratio = None
@@ -74,6 +77,7 @@ class TopPad:
             legend_y2            = None,
             legend_border_size   = 0,
             legend_fill_style    = 0,
+            legend_chi2          = False,
             ):
 
       # create the pad
@@ -104,6 +108,7 @@ class TopPad:
       # draw the plots
       for i in range(len(self.plots)):
          plot = self.plots[i]
+         chi2 = None
          if i == 0:
             #plot.plot.GetYaxis().SetLabelSize(0)
             # can turn off the X-axis labels
@@ -114,8 +119,11 @@ class TopPad:
             plot.Draw()
          else:
             plot.Draw(same=True)
+            # calculate chi2 between this plot and the first
+            if legend_chi2:
+               chi2 = ChiSquared.TH1ChiSquared(self.plots[0].plot,plot.plot)
          if draw_legend:
-            plot.AddToLegend(self.legend)
+            plot.AddToLegend(self.legend,chi2)
       
       if draw_legend:
          self.legend.Draw('same')
@@ -254,6 +262,7 @@ class RatioCanvas:
                 legend_y2              = 0.7, # bottom-right
                 legend_border_size     = 0,
                 legend_fill_style      = 0,
+                legend_chi2            = False,
                 canvas                 = None,
                ):
       # create TopPad and RatioPad
@@ -308,6 +317,7 @@ class RatioCanvas:
       self.legend_y2             = legend_y2
       self.legend_border_size    = legend_border_size
       self.legend_fill_style     = legend_fill_style
+      self.legend_chi2           = legend_chi2
 
  
    def AddPlot(self,plot,draw_options='',legend_label=None,
@@ -350,6 +360,7 @@ class RatioCanvas:
                          self.legend_y2,
                          self.legend_border_size,
                          self.legend_fill_style,
+                         self.legend_chi2,
                        )
       # bring focus back to canvas
       self.canvas.cd()

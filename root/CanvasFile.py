@@ -1,5 +1,4 @@
-from ROOT import TCanvas,TLegend
-
+import ROOT
 
 class CanvasFile:
    
@@ -10,6 +9,7 @@ class CanvasFile:
          self.legend_label = legend_label
          self.legend_options = legend_options
       def draw(self,min_x=None,max_x=None,min_y=None,max_y=None,same=False):
+         #self.plot.Print("all")
          self.plot_clone = self.plot.Clone(self.plot.GetName()+'_clone')
          if max_y is not None:
             self.plot_clone.SetMaximum(max_y)
@@ -54,7 +54,7 @@ class CanvasFile:
               legend_x2 is not None and
               legend_y1 is not None and
               legend_y2 is not None):
-            self.legend = TLegend(legend_x1,legend_y1,legend_x2,legend_y2)
+            self.legend = ROOT.TLegend(legend_x1,legend_y1,legend_x2,legend_y2)
             self.legend.SetFillStyle(0)
             self.legend.SetBorderSize(0)
          self.auto_max_y = auto_max_y
@@ -86,7 +86,7 @@ class CanvasFile:
                 width = 800, # horizontal width in pixels
                 height = 600, # vertical width in pixels
                ):
-      self.canvas = TCanvas(name,title,position_x,position_y,width,height)
+      self.canvas = ROOT.TCanvas(name,title,position_x,position_y,width,height)
       self.canvas.SetMargin(0.2,0.05,0.15,0.05) # left, right, bottom, top, unit = fraction of pad
       self.pages = []
       self.current_page = -1
@@ -127,10 +127,11 @@ class CanvasFile:
          self.canvas.cd()
          page.draw()
          save_filename = filename
-         if i  == 0: # first page must open canvas file
-            save_filename += '('
-         elif i == len(self.pages) - 1: # last page must close canvas file
-            save_filename += ')'
+         if len(self.pages) > 1:
+            if i  == 0: # first page must open canvas file
+               save_filename += '('
+            elif i == len(self.pages) - 1: # last page must close canvas file
+               save_filename += ')'
          self.canvas.SetLogx(page.log_x)
          self.canvas.SetLogy(page.log_y)
          self.canvas.SaveAs(save_filename)
@@ -139,13 +140,23 @@ class CanvasFile:
 def get_max_y(plots):
    max_y = 0.
    for plot in plots:
-      #print 'max_y:',max_y
-      hist = plot.plot
-      for bin_num in range(1,hist.GetNbinsX()):
-         y = hist.GetBinContent(bin_num)
-         #print 'hist bin:',bin_num,y
-         if y > max_y:
-            max_y = y
+
+      if isinstance(plot.plot,ROOT.TH1):
+         #print 'max_y:',max_y
+         hist = plot.plot
+         for bin_num in range(1,hist.GetNbinsX()):
+            y = hist.GetBinContent(bin_num)
+            #print 'hist bin:',bin_num,y
+            if y > max_y:
+               max_y = y
+      elif isinstance(plot.plot,ROOT.TGraph):
+         graph = plot.plot
+         x = None
+         y = None
+         for point_index in range(0,graph.GetN()):
+            graph.GetPoint(point_index,x,y)
+            if y > max_y:
+               max_y = y
    return max_y*1.1
 
 

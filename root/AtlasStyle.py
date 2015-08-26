@@ -1,18 +1,18 @@
 
-from ROOT import TStyle,gROOT,kWarning,gErrorIgnoreLevel
+import ROOT
 
 def SetAtlasStyle():
 
   atlasStyle = AtlasStyle()
-  gROOT.SetStyle('ATLAS')
-  gROOT.ForceStyle()
+  ROOT.gROOT.SetStyle('ATLAS')
+  ROOT.gROOT.ForceStyle()
 
 
 def AtlasStyle():
-  atlasStyle = TStyle('ATLAS','Atlas style')
+  atlasStyle = ROOT.TStyle('ATLAS','Atlas style')
    
   # set verbosity
-  gErrorIgnoreLevel = kWarning
+  ROOT.gErrorIgnoreLevel = ROOT.kWarning
   
   # use plain black on white colors
   icol=0 # WHITE
