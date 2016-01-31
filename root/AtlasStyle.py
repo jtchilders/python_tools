@@ -1,4 +1,6 @@
 
+# need CERN's ROOT analysis software installed
+# https://root.cern.ch
 import ROOT
 
 def SetAtlasStyle():
