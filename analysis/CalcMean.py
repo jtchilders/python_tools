@@ -1,7 +1,7 @@
 
 import math
 
-class mean:
+class CalcMean:
    def __init__(self):
       self.mean = 0
       self.sigma = 0
