@@ -32,4 +32,17 @@ class CalcMean:
          return 0
       mean = self.calc_mean()
       self.sigma = math.sqrt( (1./self.n)*self.sum2 - mean*mean)
+      return self.sigma
+
+   def get_string(self,format = '%f +/- %f',
+                       show_percent_error=False,
+                       show_percent_error_format = '%12.2f +/- %12.2f (%04.2f%%)'
+                 ):
+      s = ''
+      if show_percent_error:
+         percent_error = self.calc_sigma()/self.calc_mean()*100.
+         s = show_percent_error_format % (self.calc_mean(),self.calc_sigma(),percent_error)
+      else:
+         s = format % (self.calc_mean(),self.calc_sigma())
+      return s
 
