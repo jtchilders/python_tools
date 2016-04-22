@@ -34,6 +34,44 @@ class CalcMean:
       self.sigma = math.sqrt( (1./self.n)*self.sum2 - mean*mean)
       return self.sigma
 
+   def __add__(self,other):
+      new = CalcMean()
+      new.n = self.n + other.n
+      new.sum = self.sum + other.sum
+      new.sum2 = self.sum2 + other.sum2
+      return new
+
+   def __eq__(self,other):
+      if self.calc_mean() == other.calc_mean():
+         return True
+      return False
+
+   def __ne__(self,other):
+      if self.calc_mean() != other.calc_mean():
+         return True
+      return False
+
+   def __gt__(self,other):
+      if self.calc_mean() > other.calc_mean():
+         return True
+      return False
+
+   def __lt__(self,other):
+      if self.calc_mean() < other.calc_mean():
+         return True
+      return False
+
+   def __ge__(self,other):
+      if self.calc_mean() >= other.calc_mean():
+         return True
+      return False
+
+   def __le__(self,other):
+      if self.calc_mean() <= other.calc_mean():
+         return True
+      return False
+
+
    def get_string(self,format = '%f +/- %f',
                        show_percent_error=False,
                        show_percent_error_format = '%12.2f +/- %12.2f (%04.2f%%)'
