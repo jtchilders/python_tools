@@ -16,7 +16,7 @@ def main():
                   ]
 
    for man in manditory_args:
-      if options.__dict__[man] is None:
+      if man not in options.__dict__ or options.__dict__[man] is None:
          logger.error('Must specify option: ' + man)
          parser.print_help()
          sys.exit(-1)
