@@ -7,8 +7,8 @@ def main():
    logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
    parser = optparse.OptionParser(description='')
-   parser.add_option('-g','--glob',dest='glob',help='glob to grab tarball paths, will look for athena_stdout.txt and athenaMP-workers.../worker_*/AthenaMP.log')
-   parser.add_option('-o','--output',dest='output',help='output filename',default='athenadata.json')
+   parser.add_option('-g','--glob',dest='glob',help='glob to grab each path where athenaMP was run. Use double quotes to use wildcards, for example "tarball_*". This script will look for athena_stdout.txt and athenaMP-workers.../worker_*/AthenaMP.log in each directory matching this glob.')
+   parser.add_option('-o','--output',dest='output',help='output filename for the json data extracted from these logs',default='athenadata.json')
    options,args = parser.parse_args()
 
    
