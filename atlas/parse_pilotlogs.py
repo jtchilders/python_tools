@@ -8,8 +8,8 @@ def main():
    logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
    parser = optparse.OptionParser(description='')
-   parser.add_option('-g','--glob',dest='glob',help='glob to grab pilot log files to parse')
-   parser.add_option('-o','--output',dest='output',help='output file name',default='pilotdata.json')
+   parser.add_option('-g','--glob',dest='glob',help='glob to grab pilot log files to parse for each job in a batch job. Use double quotes to use wildcards, for example: "pandajob*/pilot.log"')
+   parser.add_option('-o','--output',dest='output',help='output filename for json data extracted from log files',default='pilotdata.json')
    options,args = parser.parse_args()
 
    
