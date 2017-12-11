@@ -8,6 +8,8 @@ def main():
 
    parser = optparse.OptionParser(description='')
    parser.add_option('-g','--glob',dest='glob',help='glob to grab each path where athenaMP was run. Use double quotes to use wildcards, for example "tarball_*". This script will look for athena_stdout.txt and athenaMP-workers.../worker_*/AthenaMP.log in each directory matching this glob.')
+   parser.add_option('-e','--event-service',dest='event_service',help='flag to treat job data like event service jobs',default=False,action='store_true')
+   parser.add_option('-t','--trf-log',dest='trf_log',help='the name of the transform starting log',default='athena_stdout.txt')
    parser.add_option('-o','--output',dest='output',help='output filename for the json data extracted from these logs',default='athenadata.json')
    options,args = parser.parse_args()
 
@@ -39,7 +41,7 @@ def main():
 
       data[jobid] = {}
       
-      athenalog = os.path.join(dir,'athena_stdout.txt')
+      athenalog = os.path.join(dir,options.trf_log)
       if not os.path.exists(athenalog):
          logger.error(athenalog + ' does not exist')
          continue
@@ -106,7 +108,7 @@ def main():
             endtime = datetime.datetime.strptime(datestring,'%b %d %H:%M:%S %Y')
             runtime = int(parts[0])
       
-      if endtime is None:
+      if endtime < current_line_date:
          endtime = current_line_date
 
       data[jobid]['startasetup'] = str(starttime)
@@ -131,9 +133,21 @@ def main():
       for athenamplog in athenamplogs:
          worker_num = get_worker_num(athenamplog)
          starttime = None
-         endtime = None
+         
+         if not options.event_service:
+            endtime = None
+         
          eventdata = {}
          for line in open(athenamplog):
+
+            try:
+               current_line_date = parse_date_B(line)
+               if options.event_service and endtime < current_line_date:
+                  endtime = current_line_date
+            except:
+               current_line_date = None
+
+
             
             # 2017-03-14 15:42:25,700 AthMpEvtLoopMgr...   INFO Logs redirected in the AthenaMP event worker PID=20442
             if starttime is None:
@@ -154,6 +168,12 @@ def main():
             # 2017-03-14 16:12:46,694 ApplicationMgr       INFO Application Manager Finalized successfully
             if 'INFO Application Manager Finalized successfully' in line:
                endtime = str(parse_date_B(line))
+
+         if options.event_service:
+            # loop over event and catch those that did not have an end time and add the global end time
+            for id,event in eventdata.iteritems():
+               if 'end' not in event:
+                  event['end'] = endtime
 
          data[jobid]['workerdata'][worker_num] = {'eventdata':eventdata,'starttime':starttime,'endtime':endtime}
 

@@ -66,6 +66,7 @@ def main():
    parser = optparse.OptionParser(description='')
    parser.add_option('-a','--athena',dest='athena_input',help='the data from the athena log files')
    parser.add_option('-p','--pilot',dest='pilot_input',help='the data from the pilot log files',default=None)
+   parser.add_option('-e','--event-service',dest='event_service',help='flag to treat job data like event service jobs',default=False,action='store_true')
    parser.add_option('-j','--jobid',dest='jobid',help='batch job id, if not provided, will try to extract from path name',default=None)
    options,args = parser.parse_args()
 
