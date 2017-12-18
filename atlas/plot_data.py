@@ -7,6 +7,7 @@ from analysis import CalcMean
 
 #ROOT.gROOT.SetBatch()
 ROOT.gStyle.SetOptStat(0)
+ROOT.gStyle.SetPalette(1)
 
 def get_job_runtime(jobid=None):
    cmd = 'sacct -j %s.batch -o Elapsed --noheader'
@@ -61,7 +62,7 @@ def get_job_runtime(jobid=None):
 
 def main():
    ''' simple starter program that can be copied for use when starting a new script. '''
-   logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
+   logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
    parser = optparse.OptionParser(description='')
    parser.add_option('-a','--athena',dest='athena_input',help='the data from the athena log files')
@@ -90,6 +91,8 @@ def main():
 
    eventtimemean = CalcMean.CalcMean()
 
+   average_worker_events_processed = CalcMean.CalcMean()
+
    pilotdata = None
    if options.pilot_input:
       pilotdata = json.load(open(options.pilot_input))
@@ -106,19 +109,27 @@ def main():
 
       try:
          adata = athenadata[jobid]
-         try:
-            astart = get_datetime_A(adata['startasetup'])
-         except:
-            logger.error('failed to parse startasetup: %s',adata['startasetup'])
-         if astart < earliest_starttime: earliest_starttime = astart
-         try:
-            aend   = get_datetime_A(adata['end_HITSMerge'])
-         except:
-            logger.error('failed to parse end_HITSMerge: %s',adata['end_HITSMerge'])
+         job_events_processed = 0
+
+         if options.event_service:
+            jobstart = get_datetime_A(adata['startTrf'])
+            jobend   = get_datetime_A(adata['endTrf'])
+         else:
+         
+            try:
+               astart = get_datetime_A(adata['startasetup'])
+            except:
+               logger.error('failed to parse startasetup: %s',adata['startasetup'])
+            if astart < earliest_starttime: earliest_starttime = astart
             
-         if aend > latest_endtime: latest_endtime = aend
-         jobstart = astart
-         jobend   = aend
+            try:
+               aend   = get_datetime_A(adata['end_HITSMerge'])
+            except:
+               logger.error('failed to parse end_HITSMerge: %s',adata['end_HITSMerge'])
+               
+            if aend > latest_endtime: latest_endtime = aend
+            jobstart = astart
+            jobend   = aend
 
          logger.info(' job start %s stop %s',jobstart,jobend)
 
@@ -126,8 +137,8 @@ def main():
          runtime_sec = runtime.total_seconds()
          runtime_min = int(runtime_sec/60.)
          
-         start = astart
-         end   = aend
+         start = jobstart
+         end   = jobend
          
          pdata = None
          if pilotdata:
@@ -157,8 +168,11 @@ def main():
          logger.info('jobstart   %s jobend   %s',jobstart,jobend)
          logger.info('runtime %s',runtime)
 
-         
-         runtime_mean.add_value(timedelta_total_seconds(runtime)/60.)
+         runtime_seconds = timedelta_total_seconds(runtime)
+         runtime_minutes = runtime_seconds/60.
+         runtime_mean.add_value(runtime_minutes)
+
+         transition_gap = max(int(runtime_minutes*0.01),1)
          
          ybins = len(adata['workerdata']) + 1
          if pilotdata:
@@ -193,21 +207,27 @@ def main():
             timeline.Fill(xbin,1.5,2)
 
          # fill log.HITSMerge time
-         startHM_min = int(timedelta_total_seconds(get_datetime_A(adata['start_HITSMerge']) - start) / 60.)
-         endHM_min = int(timedelta_total_seconds(get_datetime_A(adata['end_HITSMerge']) - start) / 60.)
+         if not options.event_service:
+            startHM_min = int(timedelta_total_seconds(get_datetime_A(adata['start_HITSMerge']) - start) / 60.)
+            endHM_min = int(timedelta_total_seconds(get_datetime_A(adata['end_HITSMerge']) - start) / 60.)
 
-         logger.debug(' start HM: %s end: %s',startHM_min,endHM_min)
+            logger.debug(' start HM: %s end: %s',startHM_min,endHM_min)
                   
-         for xbin in xrange(startHM_min,endHM_min):
-            timeline.Fill(xbin,1.5,3)
+            for xbin in xrange(startHM_min,endHM_min):
+               timeline.Fill(xbin,1.5,3)
 
          # fill workers event times
          for worker_num,workerdata in adata['workerdata'].iteritems():
+            worker_events_processed = 0
             ybin = int(worker_num) + 2.5
 
             logger.debug('worker num %s',worker_num)
             
-            worker_start = int(timedelta_total_seconds(get_datetime_A(workerdata['starttime']) - start) / 60.)
+            try:
+               worker_start = int(timedelta_total_seconds(get_datetime_A(workerdata['starttime']) - start) / 60.)
+            except:
+               logger.error('failed to parse workerdata: %s',workerdata)
+
             try:
                worker_end = int(timedelta_total_seconds(get_datetime_A(workerdata['endtime']) - start) / 60.)
             except:
@@ -220,12 +240,24 @@ def main():
 
             for evntid,evntdata in workerdata['eventdata'].iteritems():
                evnt_start = int(timedelta_total_seconds(get_datetime_A(evntdata['start']) - start) / 60.)
-               evnt_end = int(timedelta_total_seconds(get_datetime_A(evntdata['end']) - start) / 60. - 3)
+               evnt_end = int(timedelta_total_seconds(get_datetime_A(evntdata['end']) - start) / 60. - transition_gap)
 
                eventtimemean.add_value(evnt_end-evnt_start)
 
-               for xbin in xrange(evnt_start,evnt_end):
-                  timeline.Fill(xbin,ybin,1)
+               if 'lost_event' not in evntdata:
+                  worker_events_processed += 1
+
+                  for xbin in xrange(evnt_start,evnt_end):
+                     timeline.Fill(xbin,ybin,1)
+               else:
+                  evnt_end = int(timedelta_total_seconds(get_datetime_A(evntdata['end']) - start) / 60.)
+                  for xbin in xrange(evnt_start,evnt_end):
+                     timeline.Fill(xbin,ybin,3)
+
+               
+
+            average_worker_events_processed.add_value(worker_events_processed)
+            job_events_processed += worker_events_processed
          
          nbins = timeline.GetNbinsX() * timeline.GetNbinsY()
          filledbins = 0
@@ -247,6 +279,8 @@ def main():
       except:
          logger.exception('')
 
+      logger.info('events processed by job: %s',job_events_processed)
+
    occupancy.Draw()
    can.SaveAs('occupancy.ps')
 
@@ -256,8 +290,9 @@ def main():
    try:
       logger.info('core-minutes per event: %.2f' % (coreminutes/events_processed))
    except: pass
-   logger.info('average pilot runtime:  ' + runtime_mean.get_string())
-   logger.info('average event processing time: ' + eventtimemean.get_string()) 
+   logger.info('average pilot runtime:  %s',runtime_mean.get_string())
+   logger.info('average event processing time: %s',eventtimemean.get_string()) 
+   logger.info('average number of events processed by each worker: %s',average_worker_events_processed.get_string())
 
 # 2017-03-14 23:19:10
 def get_datetime_A(date_string):

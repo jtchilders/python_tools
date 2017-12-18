@@ -41,39 +41,42 @@ def main():
 
       data[jobid] = {}
       
-      athenalog = os.path.join(dir,options.trf_log)
+      athenalog = glob.glob(os.path.join(dir,options.trf_log))[0]
       if not os.path.exists(athenalog):
          logger.error(athenalog + ' does not exist')
          continue
 
 
-      starttime = None 
+      trf_starttime = None 
       startTrf = datetime.datetime.now()
       start_EVNTtoHITS = datetime.datetime.now()
       end_EVNTtoHITS = datetime.datetime.now()
       start_HITSMerge = datetime.datetime.now()
       end_HITSMerge = datetime.datetime.now()
 
-      endtime = None
+      trf_endtime = datetime.datetime.now() - datetime.timedelta(days=6000)
       runtime = 0
       
       for line in open(athenalog):
          
          try:
             current_line_date = parse_date_A(line)
+            #print current_line_date
+            if current_line_date > trf_endtime:
+               trf_endtime = current_line_date
          except:
-            current_line_date = None
+            continue
             
          # 0 running asetup Tue Mar 14 15:14:50 PDT 2017
-         if 'running asetup' in line and starttime is None:
+         if 'running asetup' in line and trf_starttime is None:
             parts = line[:-1].split()
             datestring = ' '.join(parts[4:7]) + ' ' + parts[8]
             date = datetime.datetime.strptime(datestring,'%b %d %H:%M:%S %Y') - datetime.timedelta(hours=7)
-            if starttime is None or starttime > date:
-               starttime = date
+            if trf_starttime is None or trf_starttime > date:
+               trf_starttime = date
          # PyJobTransforms.<module> 2017-06-25 08:48:34,711 INFO logging set in
-         elif 'PyJobTransforms.<module>' in line and starttime is None:
-            starttime = parse_date_A(line)
+         elif 'PyJobTransforms.<module>' in line and trf_starttime is None:
+            trf_starttime = parse_date_A(line)
             
 
          # PyJobTransforms.<module> 2017-03-14 15:19:34,190 INFO logging set in
@@ -105,20 +108,20 @@ def main():
          if 'done with asetup' in line:
             parts = line[:-1].split()
             datestring = ' '.join(parts[5:8]) + ' ' + parts[9]
-            endtime = datetime.datetime.strptime(datestring,'%b %d %H:%M:%S %Y')
+            trf_endtime = datetime.datetime.strptime(datestring,'%b %d %H:%M:%S %Y')
             runtime = int(parts[0])
       
-      if endtime < current_line_date:
-         endtime = current_line_date
 
-      data[jobid]['startasetup'] = str(starttime)
+      data[jobid]['startasetup'] = str(trf_starttime)
       data[jobid]['startTrf'] = str(startTrf)
       data[jobid]['start_EVNTtoHITS'] = str(start_EVNTtoHITS)
       data[jobid]['end_EVNTtoHITS'] = str(end_EVNTtoHITS)
       data[jobid]['start_HITSMerge'] = str(start_HITSMerge)
       data[jobid]['end_HITSMerge'] = str(end_HITSMerge)
-      data[jobid]['endtime'] = str(current_line_date)
-      data[jobid]['runtime'] = timedelta_total_seconds(endtime - starttime)
+      data[jobid]['endTrf'] = str(current_line_date)
+      data[jobid]['runtime'] = timedelta_total_seconds(trf_endtime - trf_starttime)
+
+      logger.info(' trf start - end: %s --- %s',trf_starttime,trf_endtime)
 
 
       athenaMPworkerdir = os.path.join(dir,'athenaMP-workers-EVNTtoHITS-sim')
@@ -132,50 +135,64 @@ def main():
 
       for athenamplog in athenamplogs:
          worker_num = get_worker_num(athenamplog)
-         starttime = None
+         worker_starttime = None
          
+         worker_endtime = trf_endtime
          if not options.event_service:
-            endtime = None
+            worker_endtime = None
          
          eventdata = {}
          for line in open(athenamplog):
 
             try:
                current_line_date = parse_date_B(line)
-               if options.event_service and endtime < current_line_date:
-                  endtime = current_line_date
+               #print current_line_date,'-----',trf_endtime
+               if options.event_service and trf_endtime < current_line_date:
+                  trf_endtime = current_line_date
             except:
+               continue
                current_line_date = None
 
 
             
             # 2017-03-14 15:42:25,700 AthMpEvtLoopMgr...   INFO Logs redirected in the AthenaMP event worker PID=20442
-            if starttime is None:
-               starttime = str(parse_date_B(line))  
+            if worker_starttime is None:
+               worker_starttime = current_line_date
             
             # 2017-03-14 15:47:17,242 AthenaEventLoopMgr   INFO   ===>>>  start processing event #172104, run #284500 0 events processed so far  <<<===
             if 'INFO   ===>>>  start processing event' in line:
-               date = parse_date_B(line)
                eventid = int(line.split()[8][1:-1])
-               eventdata[eventid] = {'start':str(date)}
+               eventdata[eventid] = {'start':str(current_line_date)}
             
             # 2017-03-14 15:53:53,811 AthenaEventLoopMgr   INFO   ===>>>  done processing event #172104, run #284500 1 events processed so far  <<<===
             if 'INFO   ===>>>  done processing event' in line:
-               date = parse_date_B(line)
                eventid = int(line.split()[8][1:-1])
-               eventdata[eventid]['end'] = str(date)
+               eventdata[eventid]['end'] = str(current_line_date)
             
             # 2017-03-14 16:12:46,694 ApplicationMgr       INFO Application Manager Finalized successfully
             if 'INFO Application Manager Finalized successfully' in line:
-               endtime = str(parse_date_B(line))
+               worker_endtime = current_line_date
 
          if options.event_service:
             # loop over event and catch those that did not have an end time and add the global end time
             for id,event in eventdata.iteritems():
                if 'end' not in event:
-                  event['end'] = endtime
+                  event['end'] = str(trf_endtime)
+                  event['lost_event'] = True
+            # replace worker endtime with trf_endtime
+            worker_endtime = trf_endtime
 
-         data[jobid]['workerdata'][worker_num] = {'eventdata':eventdata,'starttime':starttime,'endtime':endtime}
+         data[jobid]['workerdata'][worker_num] = {'eventdata':eventdata,'starttime':str(worker_starttime),'endtime':str(worker_endtime)}
+
+
+      #logger.info(' trf start - end: %s --- %s',trf_starttime,trf_endtime)
+
+      if options.event_service:
+         data[jobid]['end_EVNTtoHITS'] = str(trf_endtime)
+         data[jobid]['start_HITSMerge'] = None
+         data[jobid]['end_HITSMerge'] = None
+         data[jobid]['endTrf'] = str(trf_endtime)
+         data[jobid]['runtime'] = timedelta_total_seconds(trf_endtime - trf_starttime)
 
 
    #print data
