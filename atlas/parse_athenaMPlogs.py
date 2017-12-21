@@ -48,7 +48,6 @@ def main():
 
 
       trf_starttime = None 
-      startTrf = datetime.datetime.now()
       start_EVNTtoHITS = datetime.datetime.now()
       end_EVNTtoHITS = datetime.datetime.now()
       start_HITSMerge = datetime.datetime.now()
@@ -81,7 +80,7 @@ def main():
 
          # PyJobTransforms.<module> 2017-03-14 15:19:34,190 INFO logging set in
          if 'PyJobTransforms.<module>' in line and 'INFO logging set in' in line:
-            startTrf = parse_date_A(line)
+            trf_starttime = parse_date_A(line)
 
          # PyJobTransforms.trfExe.execute 2017-03-14 15:22:11,659 INFO Starting execution of EVNTtoHITS (['./runwrapper.EVNTtoHITS.sh']) 
          if 'Starting execution of EVNTtoHITS' in line:
@@ -113,12 +112,12 @@ def main():
       
 
       data[jobid]['startasetup'] = str(trf_starttime)
-      data[jobid]['startTrf'] = str(startTrf)
+      data[jobid]['startTrf'] = str(trf_starttime)
       data[jobid]['start_EVNTtoHITS'] = str(start_EVNTtoHITS)
       data[jobid]['end_EVNTtoHITS'] = str(end_EVNTtoHITS)
       data[jobid]['start_HITSMerge'] = str(start_HITSMerge)
       data[jobid]['end_HITSMerge'] = str(end_HITSMerge)
-      data[jobid]['endTrf'] = str(current_line_date)
+      data[jobid]['endTrf'] = str(trf_endtime)
       data[jobid]['runtime'] = timedelta_total_seconds(trf_endtime - trf_starttime)
 
       logger.info(' trf start - end: %s --- %s',trf_starttime,trf_endtime)
