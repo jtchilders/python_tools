@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os,sys,optparse,logging,json,ROOT,datetime,subprocess
+import os,sys,optparse,logging,json,ROOT,datetime,subprocess,array
 from dateutil import parser as dateutilparser
 logger = logging.getLogger(__name__)
 sys.path.append('/global/homes/p/parton/python_tools')
@@ -7,7 +7,8 @@ from analysis import CalcMean
 
 #ROOT.gROOT.SetBatch()
 ROOT.gStyle.SetOptStat(0)
-ROOT.gStyle.SetPalette(1)
+colors = [ROOT.kYellow,ROOT.kBlue,ROOT.kGreen,ROOT.kRed]
+ROOT.gStyle.SetPalette(len(colors),array.array('i',colors))
 
 def get_job_runtime(jobid=None):
    cmd = 'sacct -j %s.batch -o Elapsed --noheader'
@@ -141,7 +142,7 @@ def main():
          end   = jobend
          
          pdata = None
-         if pilotdata:
+         if pilotdata is not None:
             pdata = pilotdata[jobid]
             pilotstart = get_datetime_A(pdata['start']) + datetime.timedelta(hours=7)
             if pilotstart < earliest_starttime: earliest_starttime = pilotstart
@@ -165,7 +166,7 @@ def main():
             start = pilotstart
             end   = pilotend
          
-         logger.info('jobstart   %s jobend   %s',jobstart,jobend)
+         #logger.info('jobstart   %s jobend   %s',jobstart,jobend)
          logger.info('runtime %s',runtime)
 
          runtime_seconds = timedelta_total_seconds(runtime)
@@ -178,33 +179,41 @@ def main():
          if pilotdata:
             ybins += 1
 
-         timeline = ROOT.TH2D('timeline',';time since start (minutes); processes',runtime_min,0,runtime_min,ybins,0,ybins)
-         if pilotdata:
-            # fill panda job running time
-            jobstart_min = int(timedelta_total_seconds(jobstart - start) / 60.)
-            jobend_min = int(timedelta_total_seconds(jobend - start) / 60.)
+         timeline = ROOT.TH2D('timeline','1=running,2=eventloop,3=lostevent;time since start (minutes); processes',runtime_min,0,runtime_min,ybins,0,ybins)
+         timeline.SetMaximum(4)
+         timeline.SetMinimum(0)
+         # set contour
+         levels = [0,1,2,3,4]
+         timeline.SetContour(len(levels),array.array('d',levels))
 
-            for xbin in xrange(jobstart_min,jobend_min):
-               timeline.Fill(xbin,0.5,1)
+         # fill panda job running time
+         jobstart_min = int(timedelta_total_seconds(jobstart - start) / 60.)
+         jobend_min = int(timedelta_total_seconds(jobend - start) / 60.)
+
+         for xbin in xrange(jobstart_min,jobend_min):
+            timeline.Fill(xbin,0.5,0.5)
 
          # fill time for asetup
          asetup_start_min = int(timedelta_total_seconds(get_datetime_A(adata['startasetup']) - start) / 60.)
          asetup_end_min = int(timedelta_total_seconds(get_datetime_A(adata['startTrf']) - start) / 60.)
+         
+         if asetup_start_min != asetup_end_min:
+            logger.info(' asetup start min: %s stop min: %s',asetup_start_min,asetup_end_min)
 
-         logger.debug(' asetup start min: %s stop min: %s',asetup_start_min,asetup_end_min)
-
-         for xbin in xrange(asetup_start_min,asetup_end_min):
-            timeline.Fill(xbin,1.5,1)
+            for xbin in xrange(asetup_start_min,asetup_end_min):
+               timeline.Fill(xbin,1.5,1.5)
          
          # fill log.EVNTtoHITS time
-         startEH_min = int(timedelta_total_seconds(get_datetime_A(adata['start_EVNTtoHITS']) - start) / 60.)
-         endEH_min = int(timedelta_total_seconds(get_datetime_A(adata['end_EVNTtoHITS']) - start) / 60.)
+         if ( timedelta_total_seconds(get_datetime_A(adata['start_EVNTtoHITS']) - start) != 0 and 
+              timedelta_total_seconds(get_datetime_A(adata['end_EVNTtoHITS']) - end) != 0): 
+            startEH_min = int(timedelta_total_seconds(get_datetime_A(adata['start_EVNTtoHITS']) - start) / 60.)
+            endEH_min = int(timedelta_total_seconds(get_datetime_A(adata['end_EVNTtoHITS']) - start) / 60.)
 
-         logger.debug(' start EH: %s end: %s',startEH_min,endEH_min)
-         
+            logger.info(' start EH: %s end: %s',startEH_min,endEH_min)
+            
 
-         for xbin in xrange(startEH_min,endEH_min):
-            timeline.Fill(xbin,1.5,2)
+            for xbin in xrange(startEH_min,endEH_min):
+               timeline.Fill(xbin,1.5,2.5)
 
          # fill log.HITSMerge time
          if not options.event_service:
@@ -214,7 +223,7 @@ def main():
             logger.debug(' start HM: %s end: %s',startHM_min,endHM_min)
                   
             for xbin in xrange(startHM_min,endHM_min):
-               timeline.Fill(xbin,1.5,3)
+               timeline.Fill(xbin,1.5,3.5)
 
          # fill workers event times
          for worker_num,workerdata in adata['workerdata'].iteritems():
@@ -236,7 +245,7 @@ def main():
             logger.debug('   worker start %s end %s',worker_start,worker_end)
 
             for xbin in xrange(worker_start,worker_end):
-               timeline.Fill(xbin,ybin,1)
+               timeline.Fill(xbin,ybin,1.5)
 
             for evntid,evntdata in workerdata['eventdata'].iteritems():
                evnt_start = int(timedelta_total_seconds(get_datetime_A(evntdata['start']) - start) / 60.)
@@ -252,7 +261,7 @@ def main():
                else:
                   evnt_end = int(timedelta_total_seconds(get_datetime_A(evntdata['end']) - start) / 60.)
                   for xbin in xrange(evnt_start,evnt_end):
-                     timeline.Fill(xbin,ybin,3)
+                     timeline.Fill(xbin,ybin,2)
 
                
 
@@ -263,7 +272,7 @@ def main():
          filledbins = 0
          for xbin in xrange(timeline.GetNbinsX()):
             for ybin in xrange(timeline.GetNbinsY()):
-               if timeline.GetBinContent(timeline.FindBin(xbin+1,ybin+1)) > 0:
+               if timeline.GetBinContent(timeline.FindBin(xbin+1,ybin+1)) == 2.5:
                   filledbins += 1
          print nbins,filledbins
          occupancy.Fill(float(filledbins)/float(nbins))
