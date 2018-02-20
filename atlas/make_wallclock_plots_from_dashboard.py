@@ -33,7 +33,7 @@ def main():
    queues = []
    sites = {'OLCF':['ORNL_Titan_MCORE','Titan_long_MCORE','Titan_Harvester_MCORE',
                     'Titan_Harvester_ES','Titan_Harvester_test_MCORE'],
-            'ALCF':['ALCF_Theta','ALCF_Theta_ES'],
+            'ALCF':['ALCF_Theta','ALCF_Theta_ES','ALCF_Cooley'],
             'NERSC':['NERSC_Cori_p2_mcore','NERSC_Cori_p1_mcore','NERSC_Edison_mcore',
                      'NERSC_Cori_p2_ES','NERSC_Cori_p1_ES','NERSC_Edison_ES',
                      'NERSC_Edison_2','NERSC_Edison','NERSC_Cori','NERSC_Cori_2']
