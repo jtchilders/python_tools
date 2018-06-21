@@ -24,20 +24,24 @@ def main():
          parser.print_help()
          sys.exit(-1)
    
-   athenadirs = glob.glob(options.glob )
+   athenadirs = sorted(glob.glob(options.glob ))
    
    data = {}
-   jobid = 0
+   jobid_counter = 0
+   earliest_time = datetime.datetime.now()
+   latest_time = datetime.datetime(year=2018,month=1,day=1)
    for dir in athenadirs:
       logger.info('parsing dir: ' + dir)
       
-      jobid += 1
+      jobid_counter += 1
       try:
          # tarball_PandaJob_3283617220_NERSC_Edison_2
          basedir = os.path.basename(dir)
          parts = basedir.split('_')
-         jobid = int(parts[2])
+         jobid_counter = int(parts[2])
       except: pass
+      
+      jobid = '%05d' % jobid_counter
 
       data[jobid] = {}
       
@@ -60,11 +64,23 @@ def main():
          
          try:
             current_line_date = parse_date_A(line)
-            #print current_line_date
+            #print 'line: ',line,'A:',current_line_date
             if current_line_date > trf_endtime:
                trf_endtime = current_line_date
+               
          except:
-            continue
+            try:
+               current_line_Date = parse_date_B(line)
+               #print 'line: ',line,'B:',current_line_date
+               if current_line_date > trf_endtime:
+                  trf_endtime = current_line_data
+            except:
+               continue
+         
+         if current_line_date < earliest_time:
+            earliest_time = current_line_date
+         if current_line_date > latest_time:
+            latest_time = current_line_date
             
          # 0 running asetup Tue Mar 14 15:14:50 PDT 2017
          if 'running asetup' in line and trf_starttime is None:
@@ -85,7 +101,7 @@ def main():
          # PyJobTransforms.trfExe.execute 2017-03-14 15:22:11,659 INFO Starting execution of EVNTtoHITS (['./runwrapper.EVNTtoHITS.sh']) 
          if 'Starting execution of EVNTtoHITS' in line:
             start_EVNTtoHITS = parse_date_A(line)
-            print str(start_EVNTtoHITS)
+            #print str(start_EVNTtoHITS)
          
          # PyJobTransforms.trfExe.execute 2017-03-14 16:12:58,371 INFO EVNTtoHITS executor returns 0
          if 'INFO EVNTtoHITS executor returns' in line:
@@ -120,7 +136,7 @@ def main():
       data[jobid]['endTrf'] = str(trf_endtime)
       data[jobid]['runtime'] = timedelta_total_seconds(trf_endtime - trf_starttime)
 
-      logger.info(' trf start - end: %s --- %s',trf_starttime,trf_endtime)
+      logger.info(' earliest - latest: %s --- %s',earliest_time,latest_time)
 
 
       athenaMPworkerdir = os.path.join(dir,'athenaMP-workers-EVNTtoHITS-sim')
@@ -130,10 +146,13 @@ def main():
 
       data[jobid]['workerdata'] = {}
 
-      athenamplogs = glob.glob(os.path.join(athenaMPworkerdir,'worker_*/AthenaMP.log'))
+      athenamplogs = sorted(glob.glob(os.path.join(athenaMPworkerdir,'worker_*/AthenaMP.log')))
+
+
 
       for athenamplog in athenamplogs:
          worker_num = get_worker_num(athenamplog)
+         #logger.info('work number: %6d',worker_num)
          worker_starttime = None
          
          worker_endtime = trf_endtime
@@ -151,7 +170,9 @@ def main():
             except:
                continue
                current_line_date = None
-
+            
+            if current_line_date > latest_time:
+               latest_time = current_line_date
 
             
             # 2017-03-14 15:42:25,700 AthMpEvtLoopMgr...   INFO Logs redirected in the AthenaMP event worker PID=20442
@@ -192,16 +213,19 @@ def main():
          data[jobid]['end_HITSMerge'] = None
          data[jobid]['endTrf'] = str(trf_endtime)
          data[jobid]['runtime'] = timedelta_total_seconds(trf_endtime - trf_starttime)
+   
+    
+   for jobid,jobdata in data.iteritems():
+      
+      jobdata['earliest_time'] = str(earliest_time)
+      jobdata['latest_time'] = str(latest_time)
+      
 
-
+   
    #print data
+   
 
-
-
-      
-      
-
-   json.dump(data,open(options.output,'w'))
+   json.dump(data,open(options.output,'w'),indent=4, sort_keys=True)
 
 # PyJobTransforms.trfExe.execute 2017-03-14 16:18:47,112 
 def parse_date_A(line):
