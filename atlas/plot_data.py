@@ -110,6 +110,7 @@ def main():
    occupancy    = ROOT.TH1D('occupancy',';occupancy as a fraction of node lifetime',100,0,1)
    evttime      = ROOT.TH1D('evttime',';time to process one event (min)',100,0,100)
    evttime_lost = ROOT.TH1D('evttime_lost',';time to process one event (min)',100,0,100)
+   init_time    = ROOT.TH1D('init_time',';time first event starts (min)',100,0,200)
 
    output_data = {'summary':{},'job_data':{}}
 
@@ -266,9 +267,13 @@ def main():
             for xbin in xrange(worker_start,worker_end):
                timeline.Fill(xbin,ybin,1.5)
 
+            earliest_event_time = datetime.now()
             for evntid,evntdata in workerdata['eventdata'].iteritems():
                evnt_start = int(timedelta_total_seconds(get_datetime_A(evntdata['start']) - start) / 60.)
                evnt_end = int(timedelta_total_seconds(get_datetime_A(evntdata['end']) - start) / 60. - transition_gap)
+
+               if evnt_start < earliest_event_time:
+                  earliest_event_time = evnt_start
 
                eventtimemean.add_value(evnt_end - evnt_start)
 
@@ -284,7 +289,7 @@ def main():
                   for xbin in xrange(evnt_start,evnt_end):
                      timeline.Fill(xbin,ybin,2)
 
-               
+            init_time.Fill(int(timedelta_total_seconds(earliest_event_time - start) / 60.))
 
             average_worker_events_processed.add_value(worker_events_processed)
          
@@ -328,6 +333,9 @@ def main():
    evttime_lost.SetLineColor(ROOT.kRed)
    evttime_lost.Draw('same')
    can.SaveAs('evttime.ps')
+
+   init_time.Draw()
+   can.SaveAs('init_time.ps')
 
    logger.info('occupancy: %6.4f +/- %6.4f',occupancy.GetMean(),occupancy.GetStdDev())
 
