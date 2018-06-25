@@ -355,12 +355,12 @@ def main():
 
 
    #### YODA Plots #####
-   mpi_er_wait_time = CalcMean()
-   h_er_wait_time = ROOT.TH1I('er_wait_time','Droid waiting time for Yoda to send event range;time (s);droids',1800,0,1800)
-   mpi_jr_wait_time = CalcMean()
-   h_jr_wait_time = ROOT.TH1I('jr_wait_time','Droid waiting time for Yoda to send job def;time (s);droids',1800,0,1800)
-   mpi_send_wait_time = CalcMean()
-   h_send_wait_time = ROOT.TH1I('send_wait_time','Droid waiting time for MPI to complete send;time (s);droids',1800,0,1800)
+   mpi_er_wait_time = CalcMean.CalcMean()
+   h_er_wait_time = ROOT.TH1I('er_wait_time','Droid waiting time for Yoda to send event range;time (s);droids',100,0,5000)
+   mpi_jr_wait_time = CalcMean.CalcMean()
+   h_jr_wait_time = ROOT.TH1I('jr_wait_time','Droid waiting time for Yoda to send job def;time (s);droids',100,0,500)
+   mpi_send_wait_time = CalcMean.CalcMean()
+   h_send_wait_time = ROOT.TH1I('send_wait_time','Droid waiting time for MPI to complete send;time (s);droids',200,0,1800)
    if options.event_service:
       yodalogs = sorted(glob.glob('yoda_droid_*.log'))
 
@@ -370,19 +370,22 @@ def main():
       for i in range(1,len(yodalogs)):  # exclude rank 0
          ####  plot time between request job/ER and received
          yodalog = yodalogs[i]
+         logger.info('processing %s',yodalog)
          # first job request
 
          cmd = 'grep "MPIService|.*REQUEST_JOB" ' + yodalog
          req_job_out,err = run_cmd(cmd)
+         logger.info(err)
          req_job_out = req_job_out.split('\n')
 
          cmd = 'grep "JobComm|received job definition" ' + yodalog
          new_job_out,err = run_cmd(cmd)
+         logger.info(err)
          new_job_out = new_job_out.split('\n')
 
          if len(req_job_out) > 0 and len(new_job_out) > 0:
-            req_time = get_datetime_A(req_job_out.split('|')[0])
-            new_time = get_datetime_A(new_job_out.split('|')[0])
+            req_time = get_datetime_A(req_job_out[0].split('|')[0])
+            new_time = get_datetime_A(new_job_out[0].split('|')[0])
             wait_time = timedelta_total_seconds(new_time - req_time)
             mpi_jr_wait_time.add_value(wait_time)
             h_jr_wait_time.Fill(wait_time)
@@ -435,12 +438,15 @@ def main():
 
 
 
+      logger.info('average mpi_er_wait_time: %s',mpi_er_wait_time.get_string())
       output_data['summary']['mpi_er_wait_time_mean']    = mpi_er_wait_time.calc_mean()
       output_data['summary']['mpi_er_wait_time_sigma']   = mpi_er_wait_time.calc_sigma()
 
+      logger.info('average mpi_jr_wait_time: %s',mpi_jr_wait_time.get_string())
       output_data['summary']['mpi_jr_wait_time_mean']    = mpi_jr_wait_time.calc_mean()
       output_data['summary']['mpi_jr_wait_time_sigma']   = mpi_jr_wait_time.calc_sigma()
       
+      logger.info('average mpi_send_wait_time: %s',mpi_send_wait_time.get_string())
       output_data['summary']['mpi_send_wait_time_mean']    = mpi_send_wait_time.calc_mean()
       output_data['summary']['mpi_send_wait_time_sigma']   = mpi_send_wait_time.calc_sigma()
 
@@ -449,6 +455,7 @@ def main():
       can.SaveAs('er_wait_time.ps')
       h_jr_wait_time.Draw()
       can.SaveAs('jr_wait_time.ps')
+      can.SetLogy(True)
       h_send_wait_time.Draw()
       can.SaveAs('send_wait_time.ps')
 
@@ -458,7 +465,7 @@ def main():
 
 
 def run_cmd(cmd):
-   p = subprocess.Popen(cmd.split(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+   p = subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=True)
    return p.communicate()
 
 
