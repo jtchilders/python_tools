@@ -383,12 +383,10 @@ def main():
 
          cmd = 'grep "MPIService|.*REQUEST_JOB" ' + yodalog
          req_job_out,err = run_cmd(cmd)
-         logger.info(err)
          req_job_out = req_job_out.split('\n')
 
          cmd = 'grep "JobComm|received job definition" ' + yodalog
          new_job_out,err = run_cmd(cmd)
-         logger.info(err)
          new_job_out = new_job_out.split('\n')
 
          if len(req_job_out) > 0 and len(new_job_out) > 0:
