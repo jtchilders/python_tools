@@ -52,7 +52,6 @@ def main():
                           format=logging_format,
                           datefmt=logging_datefmt,
                           filename=args.logfilename)
-      logger.info('Start yoda_droid: %s',__file__)
 
    
    
