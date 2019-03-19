@@ -20,6 +20,7 @@ def main():
    parser.add_argument('-n','--outputs_per_file',help='number of images per output file',type=int,required=True)
    parser.add_argument('-o','--output_filebase',help='base output file name, can include path',default='output')
    parser.add_argument('--max_particles',help='maximum truth particles per image',default=5,type=int)
+   parser.add_argument('-z','--gzip',help='enable libz compression on outputs',default=False,action='store_true')
 
    parser.add_argument('--debug', dest='debug', default=False, action='store_true', help="Set Logger to DEBUG")
    parser.add_argument('--error', dest='error', default=False, action='store_true', help="Set Logger to ERROR")
@@ -125,8 +126,11 @@ def main():
       hdfilename = '%s_%05d.h5' % (args.output_filebase,output_file_number)
       logger.info('writing file: %s',hdfilename)
       hdfile = h5py.File(hdfilename,'w')
-      hdfile.create_dataset('raw',data=output_data,compression='gzip')
-      hdfile.create_dataset('truth',data=output_truth,compression='gzip')
+      compression = None
+      if args.gzip:
+         compression = 'gzip'
+      hdfile.create_dataset('raw',data=output_data,compression=compression)
+      hdfile.create_dataset('truth',data=output_truth,compression=compression)
       hdfile.close()
 
 
