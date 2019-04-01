@@ -74,6 +74,7 @@ def main():
    logger.info('outputs_per_file:         %s',args.outputs_per_file)
    logger.info('output_filebase:          %s',args.output_filebase)
    logger.info('max_particles:            %s',args.max_particles)
+   logger.info('compression:              %s',args.gzip)
 
    filelist = sorted(glob.glob(args.glob))
    logger.info('found files:              %s',len(filelist))
@@ -87,7 +88,7 @@ def main():
 
    outputs_per_input = int(args.outputs_per_file/args.inputs_per_file)
 
-   
+   # looping over output files
    for i in range(int(total_output_files/nranks)+1):
 
       output_file_number = nranks*i + rank
@@ -101,7 +102,8 @@ def main():
 
       output_data = None
       output_truth = None
-      image_counter = 0
+      image_counter = 0  # counter for output images
+      # following loop assumes 1 image per input file
       for file_index in range(input_start_file_index,input_end_file_index):
          try:
             filename = filelist[file_index]
@@ -111,36 +113,42 @@ def main():
             truth = npfile['truth']
 
             if output_data is None:
-               output_data = np.zeros(shape=(args.outputs_per_file,) + data.shape[1:])
-               output_truth = np.zeros(shape=(args.outputs_per_file,args.max_particles) + truth.shape[2:])
+               output_data = []  # np.zeros(shape=(args.outputs_per_file,) + data.shape[1:])
+               output_truth = []  # np.zeros(shape=(args.outputs_per_file,args.max_particles) + truth.shape[2:])
 
-            output_data[image_counter,...] = data[0,...]
+            output_data.append(sparsify_image(data[0,...]))
+
             if truth.shape[1] > args.max_particles:
                logger.error('truth particles shape: %s ',truth.shape)
-            output_truth[image_counter,0:truth.shape[1],...] = truth[0,...]
+            truth_list = np.zeros((args.max_particles,)+truth.shape[2:])
+            truth_list[0:truth.shape[1],...] = truth[0,...]
+            output_truth.append(truth_list)
 
             image_counter += 1
          except:
             logger.exception('exception received while processing file %s',filename)
 
-      hdfilename = '%s_%05d.h5' % (args.output_filebase,output_file_number)
-      logger.info('writing file: %s',hdfilename)
-      hdfile = h5py.File(hdfilename,'w')
-      compression = None
+      filename = '%s_%05d.npz' % (args.output_filebase,output_file_number)
+      logger.info('writing file: %s',filename)
       if args.gzip:
-         compression = 'gzip'
-      hdfile.create_dataset('raw',data=output_data,compression=compression)
-      hdfile.create_dataset('truth',data=output_truth,compression=compression)
-      hdfile.close()
-
-
-def modify_raw(raw):
-   batch_size,channels,height,width = raw.shape
-   new_raw = np.zeros([batch_size,height,width,channels])
+         np.savez_compressed(filename,raw=output_data,truth=output_truth)
+      else:
+         np.savez(filename,raw=output_data,truth=output_truth)
 
 
 
-   return 
+def sparsify_image(raw):
+
+   non_zero_values = raw[np.nonzero(raw)]
+   non_zero_coords = np.transpose(np.nonzero(raw))
+
+   sparse_output = np.zeros((non_zero_values.shape[0],4),dtype=np.float32)
+   sparse_output[...,0:3] = non_zero_coords[...,0:3]
+   sparse_output[...,3] = non_zero_values[...]
+
+
+   return sparse_output
+
 
 
 

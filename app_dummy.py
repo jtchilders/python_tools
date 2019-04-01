@@ -7,8 +7,8 @@ def main():
    ''' simple starter program that can be copied for use when starting a new script. '''
    logging_format = '%(asctime)s %(levelname)s:%(name)s:%(message)s'
    logging_datefmt = '%Y-%m-%d %H:%M:%S'
-   logging.basicConfig(level=logging.INFO,format=logging_format,datefmt=logging_datefmt)
-
+   logging_level = logging.INFO
+   
    parser = argparse.ArgumentParser(description='')
    parser.add_argument('-i','--input',dest='input',help='input',required=True)
    parser.add_argument('--debug', dest='debug', default=False, action='store_true', help="Set Logger to DEBUG")
@@ -18,41 +18,16 @@ def main():
    args = parser.parse_args()
 
    if args.debug and not args.error and not args.warning:
-      # remove existing root handlers and reconfigure with DEBUG
-      for h in logging.root.handlers:
-         logging.root.removeHandler(h)
-      logging.basicConfig(level=logging.DEBUG,
-                          format=logging_format,
-                          datefmt=logging_datefmt,
-                          filename=args.logfilename)
-      logger.setLevel(logging.DEBUG)
+      logging_level = logging.DEBUG
    elif not args.debug and args.error and not args.warning:
-      # remove existing root handlers and reconfigure with ERROR
-      for h in logging.root.handlers:
-         logging.root.removeHandler(h)
-      logging.basicConfig(level=logging.ERROR,
-                          format=logging_format,
-                          datefmt=logging_datefmt,
-                          filename=args.logfilename)
-      logger.setLevel(logging.ERROR)
+      logging_level = logging.ERROR
    elif not args.debug and not args.error and args.warning:
-      # remove existing root handlers and reconfigure with WARNING
-      for h in logging.root.handlers:
-         logging.root.removeHandler(h)
-      logging.basicConfig(level=logging.WARNING,
-                          format=logging_format,
-                          datefmt=logging_datefmt,
-                          filename=args.logfilename)
-      logger.setLevel(logging.WARNING)
-   else:
-      # set to default of INFO
-      for h in logging.root.handlers:
-         logging.root.removeHandler(h)
-      logging.basicConfig(level=logging.INFO,
-                          format=logging_format,
-                          datefmt=logging_datefmt,
-                          filename=args.logfilename)
+      logging_level = logging.WARNING
 
+   logging.basicConfig(level=logging_level,
+                       format=logging_format,
+                       datefmt=logging_datefmt,
+                       filename=args.logfilename)
    
    
 

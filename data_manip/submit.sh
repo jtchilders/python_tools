@@ -18,8 +18,8 @@ export LD_LIBRARY_PATH=/opt/cray/wlm_detect/1.3.2-6.0.6.0_3.8__g388ccd5.ari/lib6
 export SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
 
 
-RANKS_PER_NODE=8
+RANKS_PER_NODE=4
 TOTAL_RANKS=$(( $COBALT_PARTSIZE * $RANKS_PER_NODE ))
 
-aprun -n $TOTAL_RANKS -N $RANKS_PER_NODE singularity exec  -B /opt/cray/pe/mpt/7.7.3/gni/mpich-gnu-abi/5.1/lib/libmpi.so.12:/miniconda3/4.5.12/lib/libmpi.so.12:ro -B /opt/cray -B /projects/atlasMLbjets/parton /home/parton/git/singularity_image_recipes/miniconda040512_py36_ml2.simg python /home/parton/git/python_tools/data_manip/numpy_to_hdf5.py -g "/projects/atlasMLbjets/parton/numpy_data/zee2jets/*.npz" -n 100 -o /projects/atlasMLbjets/parton/hd5_data/zee2jets/output
+aprun -n $TOTAL_RANKS -N $RANKS_PER_NODE singularity exec  -B /opt/cray/pe/mpt/7.7.3/gni/mpich-gnu-abi/5.1/lib/libmpi.so.12:/miniconda3/4.5.12/lib/libmpi.so.12:ro -B /opt/cray -B /projects/atlasMLbjets/parton /soft/datascience/singularity/conda_images/PyTorch_SparseConvNet.simg python /home/parton/git/python_tools/data_manip/numpy_to_sparse_numpy_calo2d.py -g "/projects/atlasMLbjets/parton/numpy_data/zee2jets/*.npz" -n 100 -o /projects/atlasMLbjets/parton/numpy_data/zee2jets_sparse_calo2d/output -z
 
