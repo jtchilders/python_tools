@@ -7,7 +7,21 @@ import pandas as pd
 import pptk
 
 point_values = ['Et','trk_id','trk_notrk','pid']
-
+'''
+        =================  =====================================
+        Preset color maps
+        =================  =====================================
+        'jet' (default)    .. image:: images/colormap_jet.png
+        'hsv'              .. image:: images/colormap_hsv.png
+        'hot'              .. image:: images/colormap_hot.png
+        'cool'             .. image:: images/colormap_cool.png
+        'spring'           .. image:: images/colormap_spring.png
+        'summer'           .. image:: images/colormap_summer.png
+        'autumn'           .. image:: images/colormap_autumn.png
+        'winter'           .. image:: images/colormap_winter.png
+        'gray'             .. image:: images/colormap_gray.png
+        =================  =====================================
+'''
 
 def main():
    ''' simple starter program that can be copied for use when starting a new script. '''
@@ -74,7 +88,7 @@ def main():
          attr = np.float32(points_et)
          attr = np.reshape(attr,(attr.shape[0],))
       elif 'pid' in args.value:
-         points_pid = points['pid'].map({-99:0,-11:10,11:10,0:5,-13:10,13:10})
+         points_pid = points['pid'].map({-99:7.9,-11:10,11:10,0:0,-13:10,13:10})
          points_pid = points_pid.fillna(-1)
          #points_pid = points['pid'] >= 0.
          attr = np.int32(points_pid)
@@ -82,13 +96,14 @@ def main():
       
       # logger.info('points = \n %s',points)
       v = pptk.viewer(points[['x','z','y']])
-      v.set(point_size=5)
+      v.set(point_size=20)
       v.attributes(attr)
       v.set(show_grid=True)
       v.set(show_axis=False)
+      v.color_map('jet',scale=[0,10])
       # v.set(r=1400)
-      v.set(bg_color=(0,0,0,0),floor_color=(0,0,0,0)) # black background
-      # v.set(bg_color=(1,1,1,1),floor_color=(1,1,1,1)) # white background
+      # v.set(bg_color=(0,0,0,0),floor_color=(0,0,0,0)) # black background
+      v.set(bg_color=(1,1,1,1),floor_color=(1,1,1,1)) # white background
       logger.info('close window for next')
       v.wait()
       v.close()
