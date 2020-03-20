@@ -30,7 +30,7 @@ def main():
    logging_level = logging.INFO
    
    parser = argparse.ArgumentParser(description='')
-   parser.add_argument('-g','--glob',help='input glob for files',default='/Users/jchilders/workdir/ml_data/atlas/csv_data/100GEV_0ETA_0PHI_v2/bjets/*')
+   parser.add_argument('-g','--glob',help='input glob for files',default='/Users/jchilders/workdir/ml_data/atlas/csv_data/zee2jets_0to1000GEV_3ETA/*')
    parser.add_argument('-v','--value',help='what value to use for point colors, can be %s' % str(point_values),default='Et')
    parser.add_argument('-t','--trkonly',help='only plot points from tracker',default=False,action='store_true')
    parser.add_argument('--debug', dest='debug', default=False, action='store_true', help="Set Logger to DEBUG")
@@ -60,11 +60,12 @@ def main():
 
    logger.info('found %s files',len(fl))
 
-   col_names = ['id', 'index', 'x', 'y', 'z', 'eta', 'phi', 'r', 'Et','pid','n','trk_good','trk_id','trk_pt']
-   col_dtype = {'id': np.int64, 'index': np.int32, 'x': np.float32, 'y': np.float32,
-                'z': np.float32, 'eta': np.float32, 'phi': np.float32, 'r': np.float32,
-                'Et': np.float32, 'pid': np.float32, 'n': np.float32, 'trk_good': np.float32, 'trk_id': np.float32, 'trk_pt': np.float32}
-   
+   col_names    = ['id', 'index', 'x', 'y', 'z', 'r', 'eta', 'phi', 'Et','pid','pn','peta','pphi','ppt','trk_good','trk_id','trk_pt']
+   col_dtype    = {'id': np.int64, 'index': np.int32, 'x': np.float32, 'y': np.float32,
+                   'z': np.float32, 'eta': np.float32, 'phi': np.float32, 'r': np.float32,
+                   'Et': np.float32, 'pid': np.float32, 'pn': np.float32, 'peta': np.float32,
+                   'pphi': np.float32, 'ppt': np.float32,
+                   'trk_good': np.float32, 'trk_id': np.float32, 'trk_pt': np.float32}
    for filename in fl:
       logger.info('filename: %s',filename)
       points = pd.read_csv(open(filename), names=col_names, dtype=col_dtype, sep='\t')
