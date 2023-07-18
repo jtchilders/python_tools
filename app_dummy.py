@@ -10,11 +10,11 @@ def main():
    logging_level = logging.INFO
    
    parser = argparse.ArgumentParser(description='')
-   parser.add_argument('-i','--input',dest='input',help='input',required=True)
-   parser.add_argument('--debug', dest='debug', default=False, action='store_true', help="Set Logger to DEBUG")
-   parser.add_argument('--error', dest='error', default=False, action='store_true', help="Set Logger to ERROR")
-   parser.add_argument('--warning', dest='warning', default=False, action='store_true', help="Set Logger to ERROR")
-   parser.add_argument('--logfilename',dest='logfilename',default=None,help='if set, logging information will go to file')
+   parser.add_argument('-i','--input',help='input',required=True)
+   parser.add_argument('--debug', default=False, action='store_true', help="Set Logger to DEBUG")
+   parser.add_argument('--error', default=False, action='store_true', help="Set Logger to ERROR")
+   parser.add_argument('--warning', default=False, action='store_true', help="Set Logger to ERROR")
+   parser.add_argument('--logfilename',default=None,help='if set, logging information will go to file')
    args = parser.parse_args()
 
    if args.debug and not args.error and not args.warning:
