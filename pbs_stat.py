@@ -13,6 +13,8 @@ def main():
    logging_level = logging.INFO
    
    parser = argparse.ArgumentParser(description='print summary information about a system using PBS')
+
+   parser.add_argument('--full-node-state', default=True, action='store_false', help="Print full node state information")
    
    parser.add_argument('--debug', default=False, action='store_true', help="Set Logger to DEBUG")
    parser.add_argument('--error', default=False, action='store_true', help="Set Logger to ERROR")
@@ -33,10 +35,10 @@ def main():
                        filename=args.logfilename)
 
    pbsnodes_data = pbs.pbsnodes()
-   pbs.print_nodes_in_state(pbsnodes_data)
-   pbs.print_ss_node_count(pbsnodes_data)
+   pbs.print_nodes_in_state(pbsnodes_data,summarize=args.full_node_state)
+   # pbs.print_ss_node_count(pbsnodes_data)
    pbsqstat_queues = pbs.qstat_queues()
-   pbs.print_queued_jobs_states(pbsqstat_queues)
+   pbs.print_queued_jobs_states(pbsqstat_queues,summarize=args.full_node_state)
    pbsqstat_jobs = pbs.qstat_jobs()
    pbsqstat_server = pbs.qstat_server()
    # pbs.print_jobs(pbsqstat_jobs)

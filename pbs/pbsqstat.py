@@ -140,27 +140,79 @@ def get_queued_jobs_states(queue_data):
    
    return output
 
-def print_queued_jobs_states(queue_data):
+def print_queued_jobs_states(queue_data: dict, summarize: bool = False):
+   # for the various queues, get a count of jobs in each state on each queue
+   #  in the format {"queue_name": {"state": count}}
    data = get_queued_jobs_states(queue_data)
-   logger.info(f"{'Queue Name':<20}: {'Transit':>10} {'Queued':>10} {'Held':>10} {'Waiting':>10} {'Running':>10} {'Exiting':>10} {'Begun':>10}")
-   logger.info(f"{'-'*20:<20}: {'-'*10:>10} {'-'*10:>10} {'-'*10:>10} {'-'*10:>10} {'-'*10:>10} {'-'*10:>10} {'-'*10:>10}")
-   state_counts = {
-      'Transit':0,
-      'Queued':0,
-      'Held':0,
-      'Waiting':0,
-      'Running':0,
-      'Exiting':0,
-      'Begun':0
-   }
+
+   # if the summarize flag was set, condense the presentation to a limited list of queues and states
+   # combininig related queues and omitting under utilized states
+   if summarize:
+      # only count these states
+      states = {
+         'Queued',
+         'Running',
+      }
+      # combined queues into these summarized queues
+      combined_queues = {
+         'backfill': ['backfill-small', 'backfill-medium', 'backfill-large'],
+         'preemptable': ['preemptable'],
+         'debug': ['debug','debug-scaling'],
+         'small': ['small'],
+         'medium': ['medium'],
+         'large': ['large'],
+      }
+      # this will be the new data list with format {"queue_name": {"state": count}}
+      new_data = {}
+      # loop over combined queue names and count the number of jobs in each state for the combined queues
+      for new_queue,old_queues in combined_queues.items():
+         new_data[new_queue] = {}
+         for old_queue in old_queues:
+            for state,count in data[old_queue].items():
+               if state in states:
+                  if state in new_data[new_queue]:
+                     new_data[new_queue][state] += count
+                  else:
+                     new_data[new_queue][state] = count
+      
+      data = new_data
+
+
+   else:
+      # otherwise, print the full list of queues and states
+      states = [
+         'Transit',
+         'Queued',
+         'Held',
+         'Waiting',
+         'Running',
+         'Exiting',
+         'Begun',
+      ]
+   
+   column_names = f"{'Queue Name':<20}: "
+   lines = f"{'-'*20:<20}: "
+   for state_name in states:
+      column_names += f"{state_name:>10} "
+      lines += f"{'-'*10:>10} "
+   logger.info(column_names)
+   logger.info(lines)
+   
+   state_totals = { state:0 for state in states }
    for queue in data:
       row_str = f"{queue:<20}: "
       for state,count in data[queue].items():
          row_str += f"{count:10} "
-         state_counts[state] += count
+         if state in states:
+            state_totals[state] += count
       logger.info(row_str)
-   logger.info(f"{'-'*20:<20}: {'-'*10:10} {'-'*10:10} {'-'*10:10} {'-'*10:10} {'-'*10:10} {'-'*10:10} {'-'*10:10}")
-   logger.info(f"{'Totals':<20}: {state_counts['Transit']:10} {state_counts['Queued']:10} {state_counts['Held']:10} {state_counts['Waiting']:10} {state_counts['Running']:10} {state_counts['Exiting']:10} {state_counts['Begun']:10}")
+   
+
+   logger.info(lines)
+   totals = f"{'Totals':<20}: "
+   for state,count in state_totals.items():
+      totals += f"{count:10} "
+   logger.info(totals)
 
 # this command returns JSON formated as follows:
 # {
@@ -466,6 +518,7 @@ def convert_jobs_to_dataframe(job_data: dict,server_data: dict) -> pd.DataFrame:
          'current_allocation':job['Resource_List'].get('current_allocation',''),
          'jobdir':job['Resource_List'].get('jobdir',''),
          'workdir':job['Variable_List'].get('PBS_O_WORKDIR',''),
+         'node_hours': job['Resource_List'].get('nodect',0) * string_time_to_hours(job['Resource_List']['walltime']),
       }
 
       if 'stime' in job and 'obittime' in job:
@@ -506,8 +559,10 @@ def print_jobs(job_data: dict,server_data: dict = None) -> None:
 
 def print_top_jobs(job_df: pd.DataFrame, 
                    top_n: int = 10,
-                   state_filter = ['R','Q']) -> None:
+                   state_filter = ['R','Q'],
+                   queue_filter = ['debug','debug-scaling','small','medium','large','preemptable']) -> None:
    tmpdf = job_df[job_df['state'].isin(state_filter)]
+   tmpdf = tmpdf[tmpdf['queue'].isin(queue_filter)]
    pd.set_option('display.float_format', '{:10.0f}'.format)
    ordered_df = tmpdf.sort_values('score',ascending=False)
    grouped_df = ordered_df.groupby('queue')

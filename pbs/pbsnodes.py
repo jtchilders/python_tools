@@ -193,9 +193,9 @@ def get_ss11_nodes(pbs_nodes_data: dict) -> list:
             output.append(n)
    return output
 
-def print_nodes_in_state(pbs_nodes_data: dict) -> None:
+def print_nodes_in_state(pbs_nodes_data: dict, summarize: bool = False) -> None:
    """
-   Print the nodes in each state in the provided PBS nodes data.
+   Print the nodes in each state in the provided PBS nodes data with dynamic column width.
 
    Parameters:
    - pbs_nodes_data (dict): A dictionary containing information about PBS nodes.
@@ -203,15 +203,41 @@ def print_nodes_in_state(pbs_nodes_data: dict) -> None:
    Returns:
    - None
    """
+   # get dictionary of number of nodes in each state key
    nodes_in_state = get_nodes_in_state(pbs_nodes_data)
+   
    total_nodes = count_nodes(pbs_nodes_data)
-   logger.info(f"{'Node State':<20s}: {'Count':>5}")
-   logger.info(f"{'-'*20}: {'-'*5}")
+   # if the summarize flag is set, combine states into summary categories as
+   # defined by this dictionary:
+   if summarize:
+      new_nodes_in_state = {}
+      for state in nodes_in_state:
+         if 'resv-exclusive' in state:
+            new_nodes_in_state['in-reservation'] = new_nodes_in_state.get('in-reservation', []) + nodes_in_state[state]
+         elif 'job-exclusive' in state:
+            new_nodes_in_state['in-use'] = new_nodes_in_state.get('in-use', []) + nodes_in_state[state]
+         elif 'down' in state or 'offline' in state:
+            new_nodes_in_state['offline'] = new_nodes_in_state.get('offline', []) + nodes_in_state[state]
+         elif 'free' in state:
+            new_nodes_in_state['free'] = new_nodes_in_state.get('free', []) + nodes_in_state[state]
+
+      nodes_in_state = new_nodes_in_state
+
+   # Find the longest state string
+   longest_state_len = max(len(state) for state in nodes_in_state)
+
+   # Adjust the column width based on the longest state string
+   col_width = max(longest_state_len, len("Node State")) + 1
+
+   logger.info(f"{'Node State':<{col_width}}: {'Count':>5}")
+   logger.info(f"{'-'*col_width}: {'-'*5}")
    for state in nodes_in_state:
-      logger.info(f"{state:<20s}: {len(nodes_in_state[state]):5}")
+      logger.info(f"{state:<{col_width}}: {len(nodes_in_state[state]):5}")
+   logger.info(f"{'-'*col_width}: {'-'*5}")
    label = "Total nodes"
-   logger.info(f"{label:<20}: {total_nodes:5}")
-   logger.info(f"{'-'*20}: {'-'*5}")
+   logger.info(f"{label:<{col_width}}: {total_nodes:5}")
+   logger.info(f"{'-'*col_width}: {'-'*5}")
+
 
 def print_ss_node_count(pbs_nodes_data: dict) -> None:
    """
