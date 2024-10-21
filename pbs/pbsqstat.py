@@ -3,6 +3,8 @@ import pandas as pd
 import dateutil,datetime
 import json
 import logging
+from tabulate import tabulate
+from .pbs_states import get_full_state_name,get_state_code
 logger = logging.getLogger(__name__)
 
 
@@ -140,10 +142,71 @@ def get_queued_jobs_states(queue_data):
    
    return output
 
-def print_queued_jobs_states(queue_data: dict, summarize: bool = False):
+
+def get_job_node_hours(job):
+   walltime = job['Resource_List'].get('walltime', '00:00:00')
+   nodes = job['Resource_List'].get('nodect', 0)
+   return int(string_time_to_hours(walltime) * nodes)
+
+# a function that takes the job data dictionary and returns the total number of 
+# node-hours in each queue and state
+def get_node_hours(jobs_data):
+   jobs = jobs_data['Jobs']
+   output = {} # will be {'queue_name': {'stateA': hours, 'stateB': hours}}
+   
+   for job_id,job_data in jobs.items():
+      job_state = job_data['job_state']
+      job_node_hours = get_job_node_hours(job_data)
+      job_queue = job_data['queue']
+
+      if job_queue not in output:
+         output[job_queue] = {}
+      if job_state not in output[job_queue]:
+         output[job_queue][job_state] = 0
+      output[job_queue][job_state] += job_node_hours
+
+   return output
+
+
+def print_queued_jobs_states(job_data: dict, summarize: bool = False):
+   job_df = convert_jobs_to_dataframe(job_data, qstat_server())
+
+   if summarize:
+      job_df = job_df[job_df['state'].isin(['Q', 'R'])]  # Filter only Running and Queued states
+      job_df['state'] = job_df['state'].replace({'Q': 'Queued', 'R': 'Running'})
+      summary_df = job_df.groupby(['queue', 'state']).agg({'jobid': 'count', 'node_hours': 'sum', 'nodes': 'sum'}).unstack(fill_value=0)
+      
+      summary_df.columns = ['Queued Count', 'Running Count', 'Queued Node Hours',  'Running Node Hours',  'Queued Nodes',  'Running Nodes']
+   else:
+      summary_df = job_df.pivot_table(index='queue', columns='state', values='jobid', aggfunc='count', fill_value=0).join(
+         job_df.pivot_table(index='queue', columns='state', values='node_hours', aggfunc='sum', fill_value=0),
+         rsuffix=' Node Hours'
+      )
+
+   summary_df = summary_df.reset_index()
+   summary_df.columns.name = None  # Remove the column index name
+
+   # Calculate totals
+   totals = summary_df.sum(numeric_only=True)
+   totals['queue'] = 'Totals'
+
+   # Append totals row to the DataFrame
+   summary_df = pd.concat([summary_df, totals.to_frame().T], ignore_index=True)
+
+   table = tabulate(summary_df.to_records(index=False), headers='keys', tablefmt='pretty',colalign=['left'] + ['right'] * (summary_df.shape[1] - 1))
+   logger.info("\n" + table)
+   # print(table)
+   
+
+def print_queued_jobs_states2(queue_data: dict, job_data: dict, summarize: bool = False):
    # for the various queues, get a count of jobs in each state on each queue
    #  in the format {"queue_name": {"state": count}}
    data = get_queued_jobs_states(queue_data)
+
+   # get the total number of node-hours in each queue
+   # in the format {"queue_name": {"Q": hours, "H": hours, ...}}
+   node_hours = get_node_hours(job_data)
+   print(node_hours)
 
    # if the summarize flag was set, condense the presentation to a limited list of queues and states
    # combininig related queues and omitting under utilized states
@@ -162,18 +225,26 @@ def print_queued_jobs_states(queue_data: dict, summarize: bool = False):
          'medium': ['medium'],
          'large': ['large'],
       }
-      # this will be the new data list with format {"queue_name": {"state": count}}
+      # this will be the new data list with format {"queue_name": {"state": {"count": count, "node_hours": hours}}}
       new_data = {}
       # loop over combined queue names and count the number of jobs in each state for the combined queues
       for new_queue,old_queues in combined_queues.items():
          new_data[new_queue] = {}
          for old_queue in old_queues:
-            for state,count in data[old_queue].items():
-               if state in states:
-                  if state in new_data[new_queue]:
-                     new_data[new_queue][state] += count
+            for state_full_name,count in data[old_queue].items():
+               print(state_full_name,count)
+               state_code = get_state_code(state_full_name) # conversion like 'Running' -> 'R'
+               if state_full_name in states:
+                  if state_full_name not in new_data[new_queue]:
+                     new_data[new_queue][state_full_name] = {'count': 0, 'node_hours': 0}
+                  if state_full_name in new_data[new_queue]:
+                     new_data[new_queue][state_full_name]['count'] += count
+                     if old_queue in node_hours and state_code in node_hours[old_queue]:
+                        new_data[new_queue][state_full_name]['node_hours'] += node_hours[old_queue][state_code]
                   else:
-                     new_data[new_queue][state] = count
+                     new_data[new_queue][state_full_name]['count'] = count
+                     if old_queue in node_hours and state_code in node_hours[old_queue]:
+                        new_data[new_queue][state_full_name]['node_hours'] = node_hours[old_queue][state_code]
       
       data = new_data
 
@@ -198,20 +269,23 @@ def print_queued_jobs_states(queue_data: dict, summarize: bool = False):
    logger.info(column_names)
    logger.info(lines)
    
-   state_totals = { state:0 for state in states }
+   state_totals = { state:{'count': 0, 'node_hours': 0} for state in states }
    for queue in data:
       row_str = f"{queue:<20}: "
-      for state,count in data[queue].items():
-         row_str += f"{count:10} "
+      for state,counts in data[queue].items():
+         row_str += f"{counts['count']:10d} "
          if state in states:
-            state_totals[state] += count
+            state_totals[state]['count'] += counts['count']
+            state_totals[state]['node_hours'] += counts['node_hours']
+         row_str += f"{counts['node_hours']:10d} "
+
       logger.info(row_str)
    
 
    logger.info(lines)
    totals = f"{'Totals':<20}: "
-   for state,count in state_totals.items():
-      totals += f"{count:10} "
+   for state,counts in state_totals.items():
+      totals += f"{counts['count']:10d} {counts['node_hours']:10d} "
    logger.info(totals)
 
 # this command returns JSON formated as follows:
@@ -518,7 +592,7 @@ def convert_jobs_to_dataframe(job_data: dict,server_data: dict) -> pd.DataFrame:
          'current_allocation':job['Resource_List'].get('current_allocation',''),
          'jobdir':job['Resource_List'].get('jobdir',''),
          'workdir':job['Variable_List'].get('PBS_O_WORKDIR',''),
-         'node_hours': job['Resource_List'].get('nodect',0) * string_time_to_hours(job['Resource_List']['walltime']),
+         'node_hours': int(job['Resource_List'].get('nodect',0) * string_time_to_hours(job['Resource_List']['walltime'])),
       }
 
       if 'stime' in job and 'obittime' in job:

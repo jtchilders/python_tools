@@ -38,12 +38,12 @@ def main():
    pbs.print_nodes_in_state(pbsnodes_data,summarize=args.full_node_state)
    # pbs.print_ss_node_count(pbsnodes_data)
    pbsqstat_queues = pbs.qstat_queues()
-   pbs.print_queued_jobs_states(pbsqstat_queues,summarize=args.full_node_state)
    pbsqstat_jobs = pbs.qstat_jobs()
-   pbsqstat_server = pbs.qstat_server()
-   # pbs.print_jobs(pbsqstat_jobs)
-   jobdf = pbs.convert_jobs_to_dataframe(pbsqstat_jobs,pbsqstat_server)
-   pbs.print_top_jobs(jobdf)
+   pbs.print_queued_jobs_states(pbsqstat_jobs,summarize=args.full_node_state)
+   # pbsqstat_server = pbs.qstat_server()
+   # # pbs.print_jobs(pbsqstat_jobs)
+   # jobdf = pbs.convert_jobs_to_dataframe(pbsqstat_jobs,pbsqstat_server)
+   # pbs.print_top_jobs(jobdf)
    
 
 
