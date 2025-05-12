@@ -546,7 +546,11 @@ import chardet
 def qstat_jobs(exec='/opt/pbs/bin/qstat',
               args=['-f','-F','json']) -> dict:
    cmd = exec + ' ' + ' '.join(args)
-   completed_process = sp.run(cmd.split(' '),capture_output=True)
+   try:
+      completed_process = sp.run(cmd.split(' '),capture_output=True)
+   except Exception as e:
+      logger.error(f"Error running qstat command: {cmd}")
+      raise e
    if completed_process.returncode != 0:
       raise Exception(completed_process.stderr.decode('utf-8'))
    try:
