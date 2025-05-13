@@ -18,14 +18,12 @@ Prints summary of jobs in queues with node-hours information.
    
    parser = argparse.ArgumentParser(description='print summary information about queues and jobs in a PBS system')
 
-   parser.add_argument('--all-states', default=True, action='store_false', help="By default only jobs in Running/Queued states are printed")
+   parser.add_argument('-a','--all-states', default=True, action='store_false', help="By default only jobs in Running/Queued states are printed")
    
    parser.add_argument('--debug', default=False, action='store_true', help="Set Logger to DEBUG")
    parser.add_argument('--error', default=False, action='store_true', help="Set Logger to ERROR")
    parser.add_argument('--warning', default=False, action='store_true', help="Set Logger to ERROR")
    parser.add_argument('--logfilename', default=None, help='if set, logging information will go to file')
-   parser.add_argument('--node-hours-summary', choices=['project', 'user'], default=None,
-                    help="Optionally print a summary of node-hours grouped by either 'project' or 'user'")
 
    args = parser.parse_args()
 
@@ -43,32 +41,7 @@ Prints summary of jobs in queues with node-hours information.
 
    pbsqstat_queues = pbs.qstat_queues()
    pbsqstat_jobs = pbs.qstat_jobs()
-   pbs.print_queued_jobs_states(pbsqstat_jobs, summarize=args.full_node_state)
-
-   if args.node_hours_summary:
-      job_df = pbs.convert_jobs_to_dataframe(pbsqstat_jobs, pbs.qstat_server())
-      
-      # Filter for only "Queued" jobs (job_state == 'Q')
-      job_df = job_df[job_df['state'] == 'Q']
-      
-      # Summarize node-hours by the selected category (either project or user)
-      if args.node_hours_summary == 'project':
-         summary_df = job_df.groupby('project').agg({'node_hours': 'sum', 'jobid': 'count'})
-      elif args.node_hours_summary == 'user':
-         summary_df = job_df.groupby('user').agg({'node_hours': 'sum', 'jobid': 'count'})
-      
-      # Rename the 'jobid' column to 'job_count'
-      summary_df = summary_df.rename(columns={'jobid': 'job_count'})
-      
-      # Sort by node-hours in descending order
-      summary_df = summary_df.sort_values(by='node_hours', ascending=False)
-      
-      # Reset index to prepare for tabulate formatting
-      summary_df = summary_df.reset_index()
-      
-      # Print the summary in tabular form
-      table = tabulate(summary_df, headers='keys', tablefmt='pretty', colalign=('left', 'right', 'right'))
-      logger.info(f"\nNode-hours Summary by {args.node_hours_summary.capitalize()} (Queued Jobs Only):\n" + table)
+   pbs.print_queued_jobs_states(pbsqstat_jobs, summarize=args.all_states)
 
 
 if __name__ == "__main__":

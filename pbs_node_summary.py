@@ -17,7 +17,7 @@ Prints summary of nodes and their current state.
    
    parser = argparse.ArgumentParser(description='print summary information about nodes in a PBS system')
 
-   parser.add_argument('--full-node-state', default=True, action='store_false', help="By default nodes are grouped into [in-reservation, in-use, offline, free], set this flag to print full node state information")
+   parser.add_argument('-a','--all-states', default=True, action='store_false', help="By default nodes are grouped into [in-reservation, in-use, offline, free], set this flag to print full node state information")
    
    parser.add_argument('--debug', default=False, action='store_true', help="Set Logger to DEBUG")
    parser.add_argument('--error', default=False, action='store_true', help="Set Logger to ERROR")
@@ -39,7 +39,7 @@ Prints summary of nodes and their current state.
                        filename=args.logfilename)
 
    pbsnodes_data = pbs.pbsnodes()
-   pbs.print_nodes_in_state(pbsnodes_data, summarize=args.full_node_state)
+   pbs.print_nodes_in_state(pbsnodes_data, summarize=args.all_states)
 
 
 if __name__ == "__main__":
