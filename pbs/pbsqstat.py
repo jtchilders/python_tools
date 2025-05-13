@@ -135,7 +135,7 @@ def print_queued_jobs_states(job_data: dict, summarize: bool = False):
    
    Args:
        job_data (dict): Job information from qstat_jobs()
-       summarize (bool): If True, combines states into Running/Queued only
+       summarize (bool): If True, filters job states by Running/Queued only
    """
    job_df = convert_jobs_to_dataframe(job_data, qstat_server())
 

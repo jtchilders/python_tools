@@ -1,6 +1,7 @@
 import subprocess as sp
 import json
 import logging
+from tabulate import tabulate
 logger = logging.getLogger(__name__)
 
 # returns data formated as follows:
@@ -320,20 +321,17 @@ def print_nodes_in_state(pbs_nodes_data: dict, summarize: bool = False) -> None:
 
       nodes_in_state = new_nodes_in_state
 
-   # Find the longest state string
-   longest_state_len = max(len(state) for state in nodes_in_state)
-
-   # Adjust the column width based on the longest state string
-   col_width = max(longest_state_len, len("Node State")) + 1
-
-   logger.info(f"{'Node State':<{col_width}}: {'Count':>5}")
-   logger.info(f"{'-'*col_width}: {'-'*5}")
+   # Prepare data for tabulate
+   table_data = []
    for state in nodes_in_state:
-      logger.info(f"{state:<{col_width}}: {len(nodes_in_state[state]):5}")
-   logger.info(f"{'-'*col_width}: {'-'*5}")
-   label = "Total nodes"
-   logger.info(f"{label:<{col_width}}: {total_nodes:5}")
-   logger.info(f"{'-'*col_width}: {'-'*5}")
+      table_data.append([state, len(nodes_in_state[state])])
+   
+   # Add total row
+   table_data.append(["Total nodes", total_nodes])
+
+   # Print the table with pipe format
+   table = tabulate(table_data, headers=["Node State", "Count"], tablefmt="pretty", colalign=("left", "right"))
+   logger.info("\n" + table)
 
 
 def print_ss_node_count(pbs_nodes_data: dict) -> None:

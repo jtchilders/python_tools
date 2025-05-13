@@ -6,16 +6,19 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-   ''' Print summary information about a system using PBS '''
-   # logging_format = '%(asctime)s %(levelname)s:%(name)s:%(message)s'
-   # logging_datefmt = '%Y-%m-%d %H:%M:%S'
+   ''' Print summary information about queues and jobs in a PBS system 
+
+Prints summary of queues and their current state.
+Prints summary of jobs in queues with node-hours information.
+   
+'''
    logging_format = ''
    logging_datefmt = ''
    logging_level = logging.INFO
    
-   parser = argparse.ArgumentParser(description='print summary information about a system using PBS')
+   parser = argparse.ArgumentParser(description='print summary information about queues and jobs in a PBS system')
 
-   parser.add_argument('--full-node-state', default=True, action='store_false', help="Print full node state information")
+   parser.add_argument('--all-states', default=True, action='store_false', help="By default only jobs in Running/Queued states are printed")
    
    parser.add_argument('--debug', default=False, action='store_true', help="Set Logger to DEBUG")
    parser.add_argument('--error', default=False, action='store_true', help="Set Logger to ERROR")
@@ -38,16 +41,9 @@ def main():
                        datefmt=logging_datefmt,
                        filename=args.logfilename)
 
-   pbsnodes_data = pbs.pbsnodes()
-   pbs.print_nodes_in_state(pbsnodes_data,summarize=args.full_node_state)
-   # pbs.print_ss_node_count(pbsnodes_data)
    pbsqstat_queues = pbs.qstat_queues()
    pbsqstat_jobs = pbs.qstat_jobs()
-   pbs.print_queued_jobs_states(pbsqstat_jobs,summarize=args.full_node_state)
-   # pbsqstat_server = pbs.qstat_server()
-   # # pbs.print_jobs(pbsqstat_jobs)
-   # jobdf = pbs.convert_jobs_to_dataframe(pbsqstat_jobs,pbsqstat_server)
-   # pbs.print_top_jobs(jobdf)
+   pbs.print_queued_jobs_states(pbsqstat_jobs, summarize=args.full_node_state)
 
    if args.node_hours_summary:
       job_df = pbs.convert_jobs_to_dataframe(pbsqstat_jobs, pbs.qstat_server())
@@ -75,8 +71,5 @@ def main():
       logger.info(f"\nNode-hours Summary by {args.node_hours_summary.capitalize()} (Queued Jobs Only):\n" + table)
 
 
-   
-
-
 if __name__ == "__main__":
-   main()
+   main() 
