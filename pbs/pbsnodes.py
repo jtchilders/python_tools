@@ -107,16 +107,112 @@ def pbsnodes(exec: str ='pbsnodes',
    """
    Executes the pbsnodes command and returns the output as a JSON object.
    
-   :param exec: The name or path of the pbsnodes executable (default: 'pbsnodes')
-   :type exec: str
+   Args:
+       exec (str): The name or path of the pbsnodes executable (default: 'pbsnodes')
+       args (list): Additional arguments to pass to pbsnodes (default: ['-a','-F','json'])
    
-   :param args: Additional arguments to pass to pbsnodes (default: [])
-   :type args: list
+   Returns:
+       dict: The output of the pbsnodes command as a JSON object
    
-   :return: The output of the pbsnodes command as a JSON object
-   :rtype: dict
-   
-   :raises Exception: If the pbsnodes command returns a non-zero exit code, an exception is raised with the error message from stderr
+   Raises:
+       Exception: If the pbsnodes command returns a non-zero exit code, an exception is raised with the error message from stderr
+
+   Example output from pbsnodes -a -F json:
+   {
+       "timestamp": 1699630815,
+       "pbs_version": "2022.1.1.20220926110806",
+       "pbs_server": "polaris-pbs-01.hsn.cm.polaris.alcf.anl.gov",
+       "nodes": {
+           "x3006c0s13b1n0": {
+               "Mom": "x3006c0s13b1n0.hsn.cm.polaris.alcf.anl.gov",
+               "ntype": "PBS",
+               "state": "free",
+               "pcpus": 64,
+               "resv": "M1150389.polaris-pbs-01.hsn.cm.polaris.alcf.anl.gov",
+               "resources_available": {
+                   "arch": "linux",
+                   "debug": "True",
+                   "demand": "False",
+                   "gputype": "A100",
+                   "host": "x3006c0s13b1n0",
+                   "mem": "527672488kb",
+                   "ncpus": 64,
+                   "ngpus": 4,
+                   "ss11": "False",
+                   "system": "polaris",
+                   "tier0": "x3006-g1",
+                   "tier1": "g1",
+                   "vnode": "x3006c0s13b1n0"
+               },
+               "resources_assigned": {},
+               "resv_enable": "True",
+               "sharing": "force_exclhost",
+               "license": "l",
+               "last_state_change_time": 1699617414,
+               "last_used_time": 1699617413
+           },
+           "x3008c0s37b1n0": {
+               "Mom": "x3008c0s37b1n0.hsn.cm.polaris.alcf.anl.gov",
+               "ntype": "PBS",
+               "state": "job-exclusive",
+               "pcpus": 64,
+               "jobs": [
+                   "1147579.polaris-pbs-01.hsn.cm.polaris.alcf.anl.gov"
+               ],
+               "resv": "M1150389.polaris-pbs-01.hsn.cm.polaris.alcf.anl.gov",
+               "resources_available": {
+                   "arch": "linux",
+                   "demand": "False",
+                   "gputype": "A100",
+                   "host": "x3008c0s37b1n0",
+                   "mem": "527672488kb",
+                   "ncpus": 64,
+                   "ngpus": 4,
+                   "ss11": "False",
+                   "system": "polaris",
+                   "tier0": "x3008-g1",
+                   "tier1": "g1",
+                   "vnode": "x3008c0s37b1n0"
+               },
+               "resources_assigned": {
+                   "ncpus": 1
+               },
+               "resv_enable": "True",
+               "sharing": "force_exclhost",
+               "license": "l",
+               "last_state_change_time": 1699556747,
+               "last_used_time": 1699556747
+           },
+           "x3009c0s19b0n0": {
+               "Mom": "x3009c0s19b0n0.hsn.cm.polaris.alcf.anl.gov",
+               "ntype": "PBS",
+               "state": "down",
+               "pcpus": 64,
+               "resv": "M1150389.polaris-pbs-01.hsn.cm.polaris.alcf.anl.gov",
+               "resources_available": {
+                   "arch": "linux",
+                   "demand": "False",
+                   "gputype": "A100",
+                   "host": "x3009c0s19b0n0",
+                   "mem": "527672488kb",
+                   "ncpus": 64,
+                   "ngpus": 4,
+                   "ss11": "True",
+                   "system": "polaris",
+                   "tier0": "x3009-g2",
+                   "tier1": "g2",
+                   "vnode": "x3009c0s19b0n0"
+               },
+               "resources_assigned": {},
+               "comment": "node down: communication closed",
+               "resv_enable": "True",
+               "sharing": "force_exclhost",
+               "license": "l",
+               "last_state_change_time": 1699558943,
+               "last_used_time": 1699480944
+           }
+       }
+   }
    """
    cmd = exec + ' ' + ' '.join(args)
    result = sp.run(cmd.split(' '),stdout=sp.PIPE,stderr=sp.PIPE)
@@ -143,11 +239,11 @@ def count_free_nodes(pbsnodes_data: dict) -> int:
    """
    Counts the number of free nodes in the given pbsnodes_data.
 
-   Parameters:
-   - pbsnodes_data (dict): The data containing information about the nodes.
+   Args:
+       pbsnodes_data (dict): The data containing information about the nodes.
 
    Returns:
-   - int: The number of free nodes.
+       int: The number of free nodes.
    """
    return len([n for n in pbsnodes_data['nodes'].values() if n['state'] == 'free'])
 
@@ -155,7 +251,7 @@ def get_node_states(pbsnodes_data: dict) -> list:
    """
    Get a unique list of states from the pbsnodes_data dictionary.
    
-   Parameters:
+   Args:
        pbsnodes_data (dict): The input dictionary containing information about the nodes.
    
    Returns:
@@ -167,11 +263,11 @@ def get_nodes_in_state(pbs_nodes_data: dict) -> dict:
    """
    Generate a dictionary of nodes in each state based on the provided PBS nodes data.
 
-   Parameters:
-   - pbs_nodes_data (dict): A dictionary containing information about PBS nodes.
+   Args:
+       pbs_nodes_data (dict): A dictionary containing information about PBS nodes.
 
    Returns:
-   - dict: A dictionary where each key represents a different state and the value is a list of nodes in that state.
+       dict: A dictionary where each key represents a different state and the value is a list of nodes in that state.
    """
    unique_states = get_node_states(pbs_nodes_data)
    return {state:[n for n in pbs_nodes_data['nodes'].values() if n['state'] == state] for state in unique_states}
@@ -180,11 +276,11 @@ def get_ss11_nodes(pbs_nodes_data: dict) -> list:
    """
    Get a list of nodes with ss11 resources.
 
-   Parameters:
-   - pbs_nodes_data (dict): A dictionary containing information about PBS nodes.
+   Args:
+       pbs_nodes_data (dict): A dictionary containing information about PBS nodes.
 
    Returns:
-   - list: A list of nodes with ss11 resources.
+       list: A list of nodes with ss11 resources.
    """
    output = []
    for n in pbs_nodes_data['nodes'].values():
@@ -197,11 +293,12 @@ def print_nodes_in_state(pbs_nodes_data: dict, summarize: bool = False) -> None:
    """
    Print the nodes in each state in the provided PBS nodes data with dynamic column width.
 
-   Parameters:
-   - pbs_nodes_data (dict): A dictionary containing information about PBS nodes.
+   Args:
+       pbs_nodes_data (dict): A dictionary containing information about PBS nodes.
+       summarize (bool): If True, combines states into summary categories (in-reservation, in-use, offline, free)
 
    Returns:
-   - None
+       None
    """
    # get dictionary of number of nodes in each state key
    nodes_in_state = get_nodes_in_state(pbs_nodes_data)
@@ -243,11 +340,11 @@ def print_ss_node_count(pbs_nodes_data: dict) -> None:
    """
    Print the number of nodes with ss11 resources in the provided PBS nodes data.
 
-   Parameters:
-   - pbs_nodes_data (dict): A dictionary containing information about PBS nodes.
+   Args:
+       pbs_nodes_data (dict): A dictionary containing information about PBS nodes.
 
    Returns:
-   - None
+       None
    """
    ss_nodes = get_ss11_nodes(pbs_nodes_data)
    logger.info(f"{'Node SS State':<20s}: {'Count':>5}")
